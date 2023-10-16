@@ -3,83 +3,163 @@ using System.Numerics;
 using System.Text;
 
 //Variables a utilizar
-ulong P = 154564121, Q = 541218581, S = 454178946, id = 000001;
-int N;
+ulong P = 17, Q = 19, id = 000001;
+List<ulong> S = new();
+S.Add(5);
+int N = 10;
+string? message = "";
+string PSN = "    ";
+List<ulong> keys = new();
+
+//Directorio de mensajes
+string messageDir = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.Parent.FullName + "\\Messages\\";
 
 
 Console.WriteLine("Bienvenido al cifrador de mensajes.\n");
 
-string? message = "";
 char opt;
 int i = 0;
 
-do
+while (true)
 {
-    if (string.IsNullOrWhiteSpace(message) && i > 0) Console.WriteLine("El mensaje no puede estar vacío.\n");
-    Console.WriteLine("Para Iniciar, por favor indique el mensaje a encriptar:");
-    message = Console.ReadLine();
-    i++;
-}
-while (string.IsNullOrWhiteSpace(message));
-i = 0;
-
-do
-{
-    if (i > 0) Console.WriteLine("ERROR: Ha seleccionado una opcion invalida");
-    Console.WriteLine("\n¿Desea cifrar el mensaje con:");
-    Console.WriteLine("1. la cantidad de nodos predeterminados [10]?");
-    Console.WriteLine("2. una cantidad de nodos personalizado?");
-    opt = Console.ReadKey().KeyChar;
-    i++;
-}
-while (opt != '1' && opt != '2');
-i = 0;
-
-if (opt == '1') N = 10;
-else
-{
-    bool valid = false;
+    Console.Clear();
     do
     {
-        try
-        {
-            Console.WriteLine("\nPor favor, indique la cantidad de nodos a utilizar:");
-            N = int.Parse(Console.ReadLine());
-            valid = true;
-        }
-        catch (Exception)
-        {
-            Console.WriteLine("ERROR: Ha ingresado un valor invalido");
-            i++;
-            valid = false;
-        }
+        if (i > 0) Console.WriteLine("ERROR: Opcion no valida, intente de nuevo.\n");
+        Console.WriteLine("¿Que tipo de mensaje desea enviar?\n");
+        Console.WriteLine("1. Conectar con el receptor");
+        Console.WriteLine("2. Enviar mensaje");
+        Console.WriteLine("3. Actualizar llaves");
+        Console.WriteLine("3. Desconectar del receptor");
+        Console.WriteLine("0. Salir\n");
+        opt = Console.ReadKey().KeyChar;
+        i++;
     }
-    while(!valid);
+    while (opt != '0' && opt != '1' && opt != '2' && opt != '3');
+    i = 0; 
+
+    switch (opt)
+    {
+        case '1':
+            Console.Clear();
+            Console.WriteLine("TIPO DE MENSAJE: FCM\n");
+            i++;
+            while (i > 0)
+            {
+                try
+                {
+                    i--;
+                    Console.WriteLine("Ingrese el numero de llaves a utilizar:");
+                    N = Convert.ToInt32(Console.ReadLine());
+                }
+                catch (Exception)
+                {
+                    i++;
+                    Console.WriteLine("ERROR: El numero de llaves debe ser un numero entero positivo, intente de nuevo.\n");
+                }
+                if (N <= 0)
+                {
+                    i++;
+                    Console.WriteLine("ERROR: El numero de llaves debe ser un numero entero positivo, intente de nuevo.\n");
+                }
+            }
+            FCM(N);
+            break;
+        case '2':
+            do
+            {
+                if (i > 0) Console.WriteLine("El mensaje no puede estar vacio, intente de nuevo.\n");
+                Console.WriteLine("Ingrese el mensaje a enviar:");
+                message = Console.ReadLine();
+                i++;
+            }
+            while (string.IsNullOrWhiteSpace(message));
+            break;
+        case '3':
+
+            break;
+        case '0':
+            Environment.Exit(0);
+            break;
+        default:
+
+            break;
+    }
 }
 
-
-string workingDirectory = Environment.CurrentDirectory;
-string projectDirectory = Directory.GetParent(workingDirectory).Parent.Parent.FullName;
-if (!File.Exists(projectDirectory + "\\FCM.txt"))
+void FCM(int keyValue)
 {
-    Console.WriteLine("No se ha realizado un contacto confirmado entre el emisor y el receptor");
-    Console.WriteLine("Procediendo a enlazar la conexion con el receptor...");
+    //Restaura para iniciar de nuevo
+    var tempS = S.First();
+    S = new();
+    S.Add(tempS);
 
-}
-else 
-{
+    message = P + "." + Q + "." + S.First() + "." + keyValue; //Genera el mensaje FCM
+    PSN = "    "; //Genera el PSN
+
+    //Convierte los datos en Bytes
+    byte[] idBytes = BitConverter.GetBytes(id);
+    byte[] typeBytes = Encoding.UTF8.GetBytes("FCM ");
+    List<byte[]> messageBytes = messageConverter(message);
+    byte[] psnBytes = Encoding.UTF8.GetBytes(PSN);
+
+    //Enlaza todos los bytes en un solo byte array
+    byte[] output = new byte[idBytes.Length + typeBytes.Length + messageBytes.Sum(arr => arr.Length) + psnBytes.Length];
+    Buffer.BlockCopy(idBytes, 0, output, 0, idBytes.Length);
+    Buffer.BlockCopy(typeBytes, 0, output, idBytes.Length, typeBytes.Length);
+    Buffer.BlockCopy(messageBytes.SelectMany(arr => arr).ToArray(), 0, output, idBytes.Length + typeBytes.Length, messageBytes.Sum(arr => arr.Length));
+    Buffer.BlockCopy(psnBytes, 0, output, idBytes.Length + typeBytes.Length + messageBytes.Sum(arr => arr.Length), psnBytes.Length);    
     
+    //Crea y escribe el mensaje en el archivo
+    DirectoryInfo mDir = new(messageDir);
+    FileInfo[] files = mDir.GetFiles();
+    foreach (var file in files) file.Delete();
+    File.Create(messageDir + "\\message.txt").Close();
+    File.WriteAllBytes(messageDir + "\\message.txt", output);
+
+    //Prepara los datos para la siguiente iteracion
+    id++;
+
+    //Crea las llaves
+    KeyCreator(keyValue);
+    Console.ReadKey();
+
+
 }
-Console.ReadKey();
 
-
-
-void Encrypt(int nodes, string type, ulong id)
+void KeyCreator (int keyValue)
 {
-
-
+    int o = 1;
+    ulong P0 = 0, Q0 = 0;
+    for (int i = keyValue; i > 0; i--)
+    {
+        if (o % 2 != 0) //Ejecuta la condicion inicial de llaves
+        {
+            P0 = Scramble(P, S.Last());
+            keys.Add(Generation(P0, Q));
+            S.Add(Mutator(S.Last(), Q));
+        }
+        else //Ejecuta la segunda iteracion de llaves
+        {
+            Q0 = Scramble(Q, S.Last());
+            keys.Add(Generation(Q0, P0));
+            S.Add(Mutator(S.Last(), P0));
+        }
+        o++;
+    }
 }
 
+List<byte[]> messageConverter (string message)
+{
+    List<byte[]> messageBytes = new();
+    for (int i = 0; i < message.Length; i += 8)
+    {
+        string chunk = message.Substring(i, Math.Min(8, message.Length - i));
+        byte[] chunkBytes = Encoding.UTF8.GetBytes(chunk);
+        messageBytes.Add(chunkBytes);
+    }
+    return messageBytes;
+}
 
 
 //fs (a, b) = a * (2b + 1)
@@ -89,10 +169,13 @@ ulong Scramble(ulong a, ulong b)
 }
 
 //fg (a, b) = 2a + b
-ulong KeyGen(ulong a, ulong b)
+ulong Generation(ulong a, ulong b)
 {
     return (2 * a) + b;
 }
 
-
-
+//fm (a, b) = ab + 2a
+ulong Mutator(ulong a, ulong b)
+{
+    return (a * b) + (2 * a);
+}

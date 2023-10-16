@@ -11,9 +11,11 @@ string? message = "";
 string PSN = "    ";
 List<ulong> keys = new();
 
-//Directorio de mensajes
-string messageDir = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.Parent.FullName + "\\Messages\\";
 
+
+//Directorio de mensajes
+var location = AppDomain.CurrentDomain.BaseDirectory;
+string messageDir = Directory.GetParent(location).Parent.Parent.Parent.Parent.FullName + "\\Messages\\";
 
 Console.WriteLine("Bienvenido al cifrador de mensajes.\n");
 
@@ -76,7 +78,29 @@ while (true)
             while (string.IsNullOrWhiteSpace(message));
             break;
         case '3':
-
+            Console.Clear();
+            Console.WriteLine("TIPO DE MENSAJE: KU\n");
+            i++;
+            while (i > 0)
+            {
+                try
+                {
+                    i--;
+                    Console.WriteLine("Ingrese el NUEVO NUMERO de llaves a utilizar:");
+                    N = Convert.ToInt32(Console.ReadLine());
+                }
+                catch (Exception)
+                {
+                    i++;
+                    Console.WriteLine("ERROR: El numero de llaves debe ser un numero entero positivo, intente de nuevo.\n");
+                }
+                if (N <= 0)
+                {
+                    i++;
+                    Console.WriteLine("ERROR: El numero de llaves debe ser un numero entero positivo, intente de nuevo.\n");
+                }
+            }
+            KU(N);
             break;
         case '0':
             Environment.Exit(0);
@@ -117,15 +141,63 @@ void FCM(int keyValue)
     File.Create(messageDir + "\\message.txt").Close();
     File.WriteAllBytes(messageDir + "\\message.txt", output);
 
+
+    //Crea las llaves
+    KeyCreator(keyValue);
+
+    Console.WriteLine("Mensaje enviado. ID del mensaje: " + id);
+    Console.WriteLine("Tipo de mensaje: FCM.\nLlaves creadas correctamente.");
+    Console.WriteLine("Presione cualquier tecla para continuar...");
+    Console.ReadKey();
+
+    //Prepara los datos para la siguiente iteracion
+    id++;
+}
+
+void KU (int keyValue)
+{
+    //Restaura para iniciar de nuevo
+    var tempS = S.First();
+    S = new();
+    S.Add(tempS);
+    keys = new(); //ELIMINA LAS LLAVES PARA RECREARLAS
+
+    message = P + "." + Q + "." + S.First() + "." + keyValue; //Genera el mensaje FCM
+    PSN = "    "; //Genera el PSN
+
+    //Convierte los datos en Bytes
+    byte[] idBytes = BitConverter.GetBytes(id);
+    byte[] typeBytes = Encoding.UTF8.GetBytes("KU  ");
+    List<byte[]> messageBytes = messageConverter(message);
+    byte[] psnBytes = Encoding.UTF8.GetBytes(PSN);
+
+    //Enlaza todos los bytes en un solo byte array
+    byte[] output = new byte[idBytes.Length + typeBytes.Length + messageBytes.Sum(arr => arr.Length) + psnBytes.Length];
+    Buffer.BlockCopy(idBytes, 0, output, 0, idBytes.Length);
+    Buffer.BlockCopy(typeBytes, 0, output, idBytes.Length, typeBytes.Length);
+    Buffer.BlockCopy(messageBytes.SelectMany(arr => arr).ToArray(), 0, output, idBytes.Length + typeBytes.Length, messageBytes.Sum(arr => arr.Length));
+    Buffer.BlockCopy(psnBytes, 0, output, idBytes.Length + typeBytes.Length + messageBytes.Sum(arr => arr.Length), psnBytes.Length);
+
+    //Crea y escribe el mensaje en el archivo
+    DirectoryInfo mDir = new(messageDir);
+    FileInfo[] files = mDir.GetFiles();
+    foreach (var file in files) file.Delete();
+    File.Create(messageDir + "\\message.txt").Close();
+    File.WriteAllBytes(messageDir + "\\message.txt", output);
+
     //Prepara los datos para la siguiente iteracion
     id++;
 
     //Crea las llaves
     KeyCreator(keyValue);
+
+    Console.WriteLine("Mensaje enviado. ID del mensaje: " + id);
+    Console.WriteLine("Tipo de mensaje: KU. Llaves reestablecidas correctamente.");
+    Console.WriteLine("Presione cualquier tecla para continuar...");
     Console.ReadKey();
-
-
 }
+
+
 
 void KeyCreator (int keyValue)
 {

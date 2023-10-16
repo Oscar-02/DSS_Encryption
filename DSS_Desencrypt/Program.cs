@@ -59,6 +59,9 @@ while (true)
                 case "RM":
                     RM(reader);
                     break;
+                case "LCM":
+                    LCM(reader);
+                    break;
 
             }
         }
@@ -94,6 +97,12 @@ void FCM(byte[] input)
     //Imprime los datos del mensaje recibido
     Console.WriteLine("Mensaje recibido. ID del mensaje: " + id);
     Console.WriteLine("Tipo de mensaje: FCM. Contacto establecido correctamente.");
+
+    for (int i = 0; i < keys.Count; i++)
+    {
+        Console.WriteLine("Llave " + (i + 1) + ": " + keys[i]);
+    }
+
     Console.WriteLine("Presione cualquier tecla para continuar...");
     Console.ReadKey();
 }
@@ -120,6 +129,12 @@ void KU(byte[] input)
     //Imprime los datos del mensaje recibido
     Console.WriteLine("Mensaje recibido. ID del mensaje: " + id);
     Console.WriteLine("Tipo de mensaje: KU. Llaves reestablecidas correctamente.");
+
+    for (int i = 0; i < keys.Count; i++)
+    {
+        Console.WriteLine("Llave " + (i + 1) + ": " + keys[i]);
+    }
+
     Console.WriteLine("Presione cualquier tecla para continuar...");
     Console.ReadKey();
 
@@ -131,6 +146,7 @@ void KU(byte[] input)
 
 void RM(byte[] input)
 {
+    string Message = Encoding.UTF8.GetString(input);
     //Obtener el ID de mensaje
     byte[] idBytes = new byte[8];
     Buffer.BlockCopy(input, 0, idBytes, 0, 8);
@@ -147,7 +163,7 @@ void RM(byte[] input)
     PSN = Encoding.UTF8.GetString(psnBytes);
 
     //Obtener el mensaje
-    string valuePSN = PSN.Substring(0,2);
+    string valuePSN = PSN.Substring(0,2); //r0p2
     int keyPos = int.Parse(PSN.Substring(3,1));
     switch (valuePSN)
     {
@@ -168,7 +184,40 @@ void RM(byte[] input)
             message = DecipherF3(message, keys[keyPos]);
             break;
     }
-    Console.WriteLine(message);
+
+    //Imprime los datos del mensaje recibido
+    Console.WriteLine("Mensaje recibido. ID del mensaje: " + id);
+    Console.WriteLine("Tipo de mensaje: RM");
+    Console.WriteLine("Mensaje: " + message);
+    Console.WriteLine("Presione cualquier tecla para continuar...");
+    Console.ReadKey();
+
+    DirectoryInfo mDir = new(messageDir);
+    FileInfo[] files = mDir.GetFiles();
+    foreach (var file in files) file.Delete();
+    message = "";
+}
+
+void LCM(byte[] input)
+{
+    //Obtener el ID de mensaje
+    byte[] idBytes = new byte[8];
+    Buffer.BlockCopy(input, 0, idBytes, 0, 8);
+    id = BitConverter.ToUInt64(idBytes);
+
+    //Reiniciar Variables
+    P = Q = id = 0;
+    N = 10;
+    S = new();
+    message = "";
+    PSN = "    ";
+    keys = new();
+
+    //Imprime los datos del mensaje recibido
+    Console.WriteLine("Mensaje recibido. ID del mensaje: " + id);
+    Console.WriteLine("Tipo de mensaje: LCM");
+    Console.WriteLine("Desconectado del emisor correctamente");
+    Console.WriteLine("Presione cualquier tecla para continuar...");
     Console.ReadKey();
 }
 

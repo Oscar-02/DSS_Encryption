@@ -33,12 +33,12 @@ while (true)
         Console.WriteLine("1. Conectar con el receptor");
         Console.WriteLine("2. Enviar mensaje");
         Console.WriteLine("3. Actualizar llaves");
-        Console.WriteLine("3. Desconectar del receptor");
+        Console.WriteLine("4. Desconectar del receptor");
         Console.WriteLine("0. Salir\n");
         opt = Console.ReadKey().KeyChar;
         i++;
     }
-    while (opt != '0' && opt != '1' && opt != '2' && opt != '3');
+    while (opt != '0' && opt != '1' && opt != '2' && opt != '3' && opt != '4');
     i = 0; 
 
     switch (opt)
@@ -105,6 +105,9 @@ while (true)
             }
             KU(N);
             break;
+        case '4':
+            LCM();
+            break;
         case '0':
             Environment.Exit(0);
             break;
@@ -149,7 +152,13 @@ void FCM(int keyValue)
     KeyCreator(keyValue);
 
     Console.WriteLine("Mensaje enviado. ID del mensaje: " + id);
-    Console.WriteLine("Tipo de mensaje: FCM.\nLlaves creadas correctamente.");
+    Console.WriteLine("Tipo de mensaje: FCM.\nLlaves creadas correctamente.\n");
+
+    for (int i = 0; i < keys.Count; i++)
+    {
+        Console.WriteLine("Llave " + (i + 1) + ": " + keys[i]);
+    }
+
     Console.WriteLine("Presione cualquier tecla para continuar...");
     Console.ReadKey();
 
@@ -196,6 +205,13 @@ void KU (int keyValue)
 
     Console.WriteLine("Mensaje enviado. ID del mensaje: " + id);
     Console.WriteLine("Tipo de mensaje: KU. Llaves reestablecidas correctamente.");
+
+
+    for (int i = 0; i < keys.Count; i++)
+    {
+        Console.WriteLine("Llave " + (i + 1) + ": " + keys[i]);
+    }
+
     Console.WriteLine("Presione cualquier tecla para continuar...");
     Console.ReadKey();
 }
@@ -257,6 +273,48 @@ void RM ()
     //Prepara los datos para la siguiente iteracion
     id++;
     messageReal = "";
+}
+
+void LCM ()
+{
+    //Restaura para iniciar de nuevo
+    var tempS = S.First();
+    S = new();
+    S.Add(tempS);
+    N = 10;
+    message = "";
+    messageReal = "";
+    PSN = "    ";
+    List<ulong> keys = new();
+
+    //Convierte los datos en Bytes
+    byte[] idBytes = BitConverter.GetBytes(id);
+    byte[] typeBytes = Encoding.UTF8.GetBytes("LCM ");
+    List<byte[]> messageBytes = messageConverter(message);
+    byte[] psnBytes = Encoding.UTF8.GetBytes(PSN);
+
+    //Enlaza todos los bytes en un solo byte array
+    byte[] output = new byte[idBytes.Length + typeBytes.Length + messageBytes.Sum(arr => arr.Length) + psnBytes.Length];
+    Buffer.BlockCopy(idBytes, 0, output, 0, idBytes.Length);
+    Buffer.BlockCopy(typeBytes, 0, output, idBytes.Length, typeBytes.Length);
+    Buffer.BlockCopy(messageBytes.SelectMany(arr => arr).ToArray(), 0, output, idBytes.Length + typeBytes.Length, messageBytes.Sum(arr => arr.Length));
+    Buffer.BlockCopy(psnBytes, 0, output, idBytes.Length + typeBytes.Length + messageBytes.Sum(arr => arr.Length), psnBytes.Length);
+
+    //Crea y escribe el mensaje en el archivo
+    DirectoryInfo mDir = new(messageDir);
+    FileInfo[] files = mDir.GetFiles();
+    foreach (var file in files) file.Delete();
+    File.Create(messageDir + "\\message.txt").Close();
+    File.WriteAllBytes(messageDir + "\\message.txt", output);
+
+    Console.WriteLine("Mensaje enviado. ID del mensaje: " + id); 
+    Console.WriteLine("Tipo de mensaje: LCM");
+    Console.WriteLine("Desconectado del emisor correctamente");
+    Console.WriteLine("Presione cualquier tecla para continuar...");
+    Console.ReadKey();
+
+    //Prepara los datos para la siguiente iteracion
+    id++;
 }
 
 

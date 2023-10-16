@@ -8,6 +8,7 @@ List<ulong> S = new();
 S.Add(5);
 int N = 10;
 string? message = "";
+string messageReal = "";
 string PSN = "    ";
 List<ulong> keys = new();
 
@@ -73,9 +74,11 @@ while (true)
                 if (i > 0) Console.WriteLine("El mensaje no puede estar vacio, intente de nuevo.\n");
                 Console.WriteLine("Ingrese el mensaje a enviar:");
                 message = Console.ReadLine();
+                messageReal = message;
                 i++;
             }
             while (string.IsNullOrWhiteSpace(message));
+            RM();
             break;
         case '3':
             Console.Clear();
@@ -197,6 +200,64 @@ void KU (int keyValue)
     Console.ReadKey();
 }
 
+void RM ()
+{
+    //Crea el nuevo mensaje cifrado
+    Random random = new();
+    PSN = "r" + random.Next(0, 3).ToString();
+    int keyPos = random.Next(0, keys.Count - 1);
+    switch (PSN)
+    {
+        case "r0":
+            message = CipherF1(message, keys[keyPos]);
+            message = CipherF3(message, keys[keyPos]);
+            break;
+        case "r1":
+            message = CipherF2(message, keys[keyPos]);
+            message = CipherF5(message, keys[keyPos]);
+            break;
+        case "r2":
+            message = CipherF4(message, keys[keyPos]);
+            message = CipherF3(message, keys[keyPos]);
+            break;
+        case "r3":
+            message = CipherF3(message, keys[keyPos]);
+            message = CipherF5(message, keys[keyPos]);
+            break;
+
+    }
+    PSN += "p" + keyPos.ToString();
+
+    //Convierte los datos en Bytes
+    byte[] idBytes = BitConverter.GetBytes(id);
+    byte[] typeBytes = Encoding.UTF8.GetBytes("RM  ");
+    List<byte[]> messageBytes = messageConverter(message);
+    byte[] psnBytes = Encoding.UTF8.GetBytes(PSN);
+
+    //Enlaza todos los bytes en un solo byte array
+    byte[] output = new byte[idBytes.Length + typeBytes.Length + messageBytes.Sum(arr => arr.Length) + psnBytes.Length];
+    Buffer.BlockCopy(idBytes, 0, output, 0, idBytes.Length);
+    Buffer.BlockCopy(typeBytes, 0, output, idBytes.Length, typeBytes.Length);
+    Buffer.BlockCopy(messageBytes.SelectMany(arr => arr).ToArray(), 0, output, idBytes.Length + typeBytes.Length, messageBytes.Sum(arr => arr.Length));
+    Buffer.BlockCopy(psnBytes, 0, output, idBytes.Length + typeBytes.Length + messageBytes.Sum(arr => arr.Length), psnBytes.Length);
+
+    //Crea y escribe el mensaje en el archivo
+    DirectoryInfo mDir = new(messageDir);
+    FileInfo[] files = mDir.GetFiles();
+    foreach (var file in files) file.Delete();
+    File.Create(messageDir + "\\message.txt").Close();
+    File.WriteAllBytes(messageDir + "\\message.txt", output);
+
+    Console.WriteLine("Mensaje enviado. ID del mensaje: " + id);
+    Console.WriteLine("Tipo de mensaje: RM");
+    Console.WriteLine("Mensaje cifrado: " + messageReal);
+    Console.WriteLine("Presione cualquier tecla para continuar...");
+    Console.ReadKey();
+
+    //Prepara los datos para la siguiente iteracion
+    id++;
+    messageReal = "";
+}
 
 
 void KeyCreator (int keyValue)
@@ -250,4 +311,45 @@ ulong Generation(ulong a, ulong b)
 ulong Mutator(ulong a, ulong b)
 {
     return (a * b) + (2 * a);
+}
+
+string CipherF1 (string message, ulong randomKey)
+{
+    int maxPos = message.Length - 2;
+    ulong Insert = randomKey * 2;
+    Random random = new();
+    int psnOut = random.Next(1, maxPos);
+    return message.Insert(psnOut, Insert.ToString());
+}
+string CipherF2(string message, ulong randomKey)
+{
+    int maxPos = message.Length - 2;
+    ulong Insert = randomKey * 3;
+    Random random = new();
+    int psnOut = random.Next(1, maxPos);
+    return message.Insert(psnOut, Insert.ToString());
+}
+string CipherF3(string message, ulong randomKey)
+{
+    int maxPos = message.Length - 2;
+    ulong Insert = randomKey * 4;
+    Random random = new();
+    int psnOut = random.Next(1, maxPos);
+    return message.Insert(psnOut, Insert.ToString());
+}
+string CipherF4(string message, ulong randomKey)
+{
+    int maxPos = message.Length - 2;
+    ulong Insert = randomKey * 5;
+    Random random = new();
+    int psnOut = random.Next(1, maxPos);
+    return message.Insert(psnOut, Insert.ToString());
+}
+string CipherF5(string message, ulong randomKey)
+{
+    int maxPos = message.Length - 2;
+    ulong Insert = randomKey * 6;
+    Random random = new();
+    int psnOut = random.Next(1, maxPos);
+    return message.Insert(psnOut, Insert.ToString());
 }

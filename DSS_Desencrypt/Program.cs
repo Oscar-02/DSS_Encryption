@@ -1,7 +1,7 @@
 ﻿using System.Text;
 
 //Variables a utilizar
-ulong P, Q, id = 0;
+ulong P = 0, Q = 0, id = 0;
 int N = 10;
 List<ulong> S = new();
 string? message = "";
@@ -56,6 +56,10 @@ while (true)
                 case "KU":
                     KU(reader);
                     break;
+                case "RM":
+                    RM(reader);
+                    break;
+
             }
         }
 
@@ -73,7 +77,7 @@ void FCM(byte[] input)
     //Obtener el mensaje
     byte[] messageBytes = new byte[input.Length - 16];
     Buffer.BlockCopy(input, 12, messageBytes, 0, input.Length - 16);
-    string message = Encoding.UTF8.GetString(messageBytes);
+    message = Encoding.UTF8.GetString(messageBytes);
 
     //FCM => Obtener los valores para las llaves
     P = ulong.Parse(message.Split('.')[0]);
@@ -82,15 +86,16 @@ void FCM(byte[] input)
     int keyValue = int.Parse(message.Split('.')[3]);
     KeyCreator(keyValue);
 
+    DirectoryInfo mDir = new(messageDir);
+    FileInfo[] files = mDir.GetFiles();
+    foreach (var file in files) file.Delete();
+    message = "";
+
     //Imprime los datos del mensaje recibido
     Console.WriteLine("Mensaje recibido. ID del mensaje: " + id);
     Console.WriteLine("Tipo de mensaje: FCM. Contacto establecido correctamente.");
     Console.WriteLine("Presione cualquier tecla para continuar...");
     Console.ReadKey();
-
-    DirectoryInfo mDir = new(messageDir);
-    FileInfo[] files = mDir.GetFiles();
-    foreach (var file in files) file.Delete();
 }
 
 void KU(byte[] input)
@@ -103,7 +108,7 @@ void KU(byte[] input)
     //Obtener el mensaje
     byte[] messageBytes = new byte[input.Length - 16];
     Buffer.BlockCopy(input, 12, messageBytes, 0, input.Length - 16);
-    string message = Encoding.UTF8.GetString(messageBytes);
+    message = Encoding.UTF8.GetString(messageBytes);
 
     //FCM => Obtener los valores para las llaves
     P = ulong.Parse(message.Split('.')[0]);
@@ -121,6 +126,50 @@ void KU(byte[] input)
     DirectoryInfo mDir = new(messageDir);
     FileInfo[] files = mDir.GetFiles();
     foreach (var file in files) file.Delete();
+    message = "";
+}
+
+void RM(byte[] input)
+{
+    //Obtener el ID de mensaje
+    byte[] idBytes = new byte[8];
+    Buffer.BlockCopy(input, 0, idBytes, 0, 8);
+    id = BitConverter.ToUInt64(idBytes);
+
+    //Obtener el mensaje
+    byte[] messageBytes = new byte[input.Length - 16];
+    Buffer.BlockCopy(input, 12, messageBytes, 0, input.Length - 16);
+    string messageCipher = Encoding.UTF8.GetString(messageBytes);
+
+    //Obtener el PSN
+    byte[] psnBytes = new byte[4];
+    Buffer.BlockCopy(input, input.Length - 4, psnBytes, 0, 4);
+    PSN = Encoding.UTF8.GetString(psnBytes);
+
+    //Obtener el mensaje
+    string valuePSN = PSN.Substring(0,2);
+    int keyPos = int.Parse(PSN.Substring(3,1));
+    switch (valuePSN)
+    {
+        case "r0":
+            message = DecipherF3(messageCipher, keys[keyPos]);
+            message = DecipherF1(message, keys[keyPos]);
+            break;
+        case "r1":
+            message = DecipherF5(messageCipher, keys[keyPos]);
+            message = DecipherF2(message, keys[keyPos]);
+            break;
+        case "r2":
+            message = DecipherF3(messageCipher, keys[keyPos]);
+            message = DecipherF4(message, keys[keyPos]);
+            break;
+        case "r3":
+            message = DecipherF5(messageCipher, keys[keyPos]);
+            message = DecipherF3(message, keys[keyPos]);
+            break;
+    }
+    Console.WriteLine(message);
+    Console.ReadKey();
 }
 
 void KeyCreator(int keyValue)
@@ -161,4 +210,35 @@ ulong Generation(ulong a, ulong b)
 ulong Mutator(ulong a, ulong b)
 {
     return (a * b) + (2 * a);
+}
+
+string DecipherF1(string cipher, ulong randomKey)
+{
+    ulong Remove = randomKey * 2;
+    string Output = cipher.Remove(cipher.IndexOf(Remove.ToString()), Remove.ToString().Length);
+    return Output;
+}
+string DecipherF2(string cipher, ulong randomKey)
+{
+    ulong Remove = randomKey * 3;
+    string Output = cipher.Remove(cipher.IndexOf(Remove.ToString()), Remove.ToString().Length);
+    return Output;
+}
+string DecipherF3(string cipher, ulong randomKey)
+{
+    ulong Remove = randomKey * 4;
+    string Output = cipher.Remove(cipher.IndexOf(Remove.ToString()), Remove.ToString().Length);
+    return Output;
+}
+string DecipherF4(string cipher, ulong randomKey)
+{
+    ulong Remove = randomKey * 5;
+    string Output = cipher.Remove(cipher.IndexOf(Remove.ToString()), Remove.ToString().Length);
+    return Output;
+}
+string DecipherF5(string cipher, ulong randomKey)
+{
+    ulong Remove = randomKey * 6;
+    string Output = cipher.Remove(cipher.IndexOf(Remove.ToString()), Remove.ToString().Length);
+    return Output;
 }

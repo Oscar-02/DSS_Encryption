@@ -146,7 +146,6 @@ void KU(byte[] input)
 
 void RM(byte[] input)
 {
-    string Message = Encoding.UTF8.GetString(input);
     //Obtener el ID de mensaje
     byte[] idBytes = new byte[8];
     Buffer.BlockCopy(input, 0, idBytes, 0, 8);
